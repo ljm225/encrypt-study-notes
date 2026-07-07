@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>方案二：RSA 公钥加密登录</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            width: 100%;
+            max-width: 520px;
+        }
+        h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .subtitle {
+            color: #888;
+            font-size: 14px;
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .badge {
+            display: inline-block;
+            background: #fff3e0;
+            color: #e65100;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 6px;
+        }
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #f5576c;
+        }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(245, 87, 108, 0.4);
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .code-block {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .code-block h3 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .code-block .label {
+            color: #888;
+        }
+        .encrypted-value {
+            color: #e65100;
+            word-break: break-all;
+        }
+        .status {
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-top: 12px;
+            font-size: 13px;
+            display: none;
+        }
+        .status.success { display: block; background: #e8f5e9; color: #2e7d32; }
+        .status.info { display: block; background: #e3f2fd; color: #1565c0; }
+
+        .key-info {
+            background: #fff8e1;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #f57f17;
+            border-left: 4px solid #ffc107;
+        }
+        .nav-links {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .nav-links a {
+            color: #f5576c;
+            text-decoration: none;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="badge">🔒 方案二</div>
+        <h1>RSA 公钥加密登录</h1>
+        <p class="subtitle">使用 RSA-OAEP 公钥加密密码，仅服务端私钥可解密</p>
+
+        <div class="key-info">
+            🔑 页面加载时已从服务端获取 RSA 公钥（2048位），
+            准备就绪后可提交表单。加密后的密码只有服务端的
+            私钥能解密，即使抓包也无法还原。
+        </div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input type="text" id="username" name="username" placeholder="请输入用户名" required>
+            </div>
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" placeholder="请输入密码" required>
+            </div>
+            <button type="submit" class="btn" id="submitBtn">⏳ 正在生成 RSA 密钥对...</button>
+        </form>
+
+        <!-- 调试面板 -->
+        <div class="code-block">
+            <h3>📋 RSA 加密过程</h3>
+            <div id="keyStatus" style="color: #888; font-size: 13px; margin-bottom: 8px;">
+                正在生成 RSA 密钥对...
+            </div>
+            <div class="row">
+                <span class="label">原始密码：</span>
+                <span class="encrypted-value" id="rawPassword">—</span>
+            </div>
+            <div class="row">
+                <span class="label">公钥模数(n)前32位：</span>
+                <span class="encrypted-value" id="keyN">—</span>
+            </div>
+            <div class="row">
+                <span class="label">加密后密码(Base64)：</span>
+                <span class="encrypted-value" id="encryptedPwd">—</span>
+            </div>
+            <div class="row" style="margin-top:8px;">
+                <span style="color:#e65100; font-size:12px;">
+                    ⚠️ 被 Burp Suite 抓到的只有 Base64 字符串，没有私钥无法解密
+                </span>
+            </div>
+        </div>
+
+        <div id="status" class="status"></div>
+
+        <div class="nav-links">
+            <a href="../README.md">← 返回目录</a>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ============================================
+         *  方案二：RSA 公钥加密 (RSA Public-Key Encryption)
+         * ============================================
+         *
+         * 流程：
+         * 1. 服务端生成 RSA 密钥对 (公钥 + 私钥)，私钥保存在服务端
+         * 2. 页面加载时，服务端将公钥发给前端
+         * 3. 用户输入密码后，前端用公钥加密密码
+         * 4. 服务端用私钥解密，得到明文密码后进行验证
+         *
+         * 安全说明：
+         * - 即使被 Burp Suite 抓包，没有私钥也无法解密 ✅
+         * - RSA-2048 位密钥，目前计算上不可破解 ✅
+         * - 必须配合 HTTPS 使用，否则攻击者可替换公钥 ❌
+         * - 建议每次登录使用不同的密钥对（非对称密钥一次一密）
+         */
+
+        // ==========================================
+        // 模拟：服务端生成 RSA 密钥对
+        // 实际项目中：私钥由服务端生成并保管，只下发公钥
+        // ==========================================
+        let publicKey = null;
+        let privateKey = null;  // 模拟用，实际私钥在服务端
+
+        async function generateServerKeyPair() {
+            const keyPair = await crypto.subtle.generateKey(
+                {
+                    name: 'RSA-OAEP',
+                    modulusLength: 2048,      // 2048 位
+                    publicExponent: new Uint8Array([1, 0, 1]),  // 65537
+                    hash: 'SHA-256',
+                },
+                true,  // 可导出（实际项目中私钥不可导出）
+                ['encrypt', 'decrypt']
+            );
+            return keyPair;
+        }
+
+        // ==========================================
+        // 前端：使用公钥加密密码
+        // ==========================================
+        async function encryptWithPublicKey(publicKey, plaintext) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(plaintext);
+            const encrypted = await crypto.subtle.encrypt(
+                {
+                    name: 'RSA-OAEP'
+                },
+                publicKey,
+                data
+            );
+            // 将 ArrayBuffer 转为 Base64 字符串
+            const bytes = new Uint8Array(encrypted);
+            let binary = '';
+            bytes.forEach(b => binary += String.fromCharCode(b));
+            return btoa(binary);
+        }
+
+        // ==========================================
+        // 模拟：服务端用私钥解密
+        // 实际项目中这一步在服务端完成
+        // ==========================================
+        async function decryptWithPrivateKey(privateKey, encryptedBase64) {
+            const binaryStr = atob(encryptedBase64);
+            const bytes = new Uint8Array(binaryStr.length);
+            for (let i = 0; i < binaryStr.length; i++) {
+                bytes[i] = binaryStr.charCodeAt(i);
+            }
+            const decrypted = await crypto.subtle.decrypt(
+                {
+                    name: 'RSA-OAEP'
+                },
+                privateKey,
+                bytes
+            );
+            const decoder = new TextDecoder();
+            return decoder.decode(decrypted);
+        }
+
+        // ==========================================
+        // 导出公钥为 PEM 格式（用于调试展示）
+        // ==========================================
+        async function exportPublicKeyAsPEM(key) {
+            const exported = await crypto.subtle.exportKey('spki', key);
+            const bytes = new Uint8Array(exported);
+            let binary = '';
+            bytes.forEach(b => binary += String.fromCharCode(b));
+            const base64 = btoa(binary);
+            const pem = '-----BEGIN PUBLIC KEY-----\n' +
+                base64.match(/.{1,64}/g).join('\n') +
+                '\n-----END PUBLIC KEY-----';
+            return pem;
+        }
+
+        // ==========================================
+        // 初始化
+        // ==========================================
+        async function init() {
+            const statusEl = document.getElementById('keyStatus');
+            const submitBtn = document.getElementById('submitBtn');
+
+            try {
+                // 模拟：从服务端获取 RSA 密钥对
+                const keyPair = await generateServerKeyPair();
+                publicKey = keyPair.publicKey;
+                privateKey = keyPair.privateKey;  // 模拟用，实际在服务端
+
+                // 导出公钥用于展示
+                const pem = await exportPublicKeyAsPEM(publicKey);
+                const pemLines = pem.split('\n');
+                // 显示公钥模数前32位
+                const spkiBytes = await crypto.subtle.exportKey('spki', publicKey);
+                const hashBytes = new Uint8Array(spkiBytes);
+                const firstBytes = Array.from(hashBytes.slice(0, 16))
+                    .map(b => b.toString(16).padStart(2, '0')).join(' ');
+                document.getElementById('keyN').textContent = firstBytes + ' ...';
+
+                statusEl.innerHTML = '✅ RSA 密钥对已生成（2048位）<br>' +
+                    '<span style="font-size:11px;color:#999;">公钥已就绪，可以加密</span>';
+                submitBtn.textContent = '🔐 登录（RSA 加密传输）';
+                submitBtn.disabled = false;
+
+                console.log('🔑 RSA 公钥（已注入前端）：');
+                console.log(pem);
+
+            } catch (err) {
+                statusEl.textContent = '❌ 密钥生成失败: ' + err.message;
+                submitBtn.textContent = '❌ 初始化失败';
+            }
+        }
+
+        // ==========================================
+        // 表单提交
+        // ==========================================
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            if (!publicKey) {
+                alert('⚠️ RSA 密钥尚未就绪，请稍候...');
+                return;
+            }
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const statusEl = document.getElementById('status');
+
+            if (!password) {
+                alert('请输入密码');
+                return;
+            }
+
+            document.getElementById('rawPassword').textContent = password;
+
+            try {
+                // =========================================
+                // 核心步骤：使用公钥加密密码
+                // =========================================
+                const encryptedPassword = await encryptWithPublicKey(publicKey, password);
+
+                document.getElementById('encryptedPwd').textContent =
+                    encryptedPassword.substring(0, 50) + '...';
+
+                // =========================================
+                // 构造发送数据
+                // =========================================
+                const payload = {
+                    username: username,
+                    encrypted_password: encryptedPassword,  // ✅ RSA 加密后的密码
+                };
+
+                console.log('📤 实际发送的数据（Burp Suite 只能抓到这些）：');
+                console.log(JSON.stringify(payload, null, 2));
+                console.log('✅ 密码已被 RSA 公钥加密，没有私钥无法解密！');
+
+                // =========================================
+                // 模拟：服务端解密验证
+                // 实际项目中，解密在服务端进行
+                // =========================================
+                const decrypted = await decryptWithPrivateKey(privateKey, encryptedPassword);
+                console.log('🔓 服务端解密结果:', decrypted);
+                console.log('✅ 密码匹配:', decrypted === password ? '是' : '否');
+
+                statusEl.className = 'status success';
+                statusEl.innerHTML = `
+                    ✅ 登录请求已发送！<br>
+                    🔓 服务端成功解密密码: <strong>${decrypted}</strong><br>
+                    🔍 Burp Suite 仅能看到 Base64 密文，看不到原始密码
+                `;
+
+            } catch (err) {
+                console.error('加密失败:', err);
+                statusEl.className = 'status info';
+                statusEl.textContent = '❌ 加密失败: ' + err.message;
+            }
+        });
+
+        // 页面加载时初始化 RSA 密钥
+        init();
+    </script>
+</body>
+</html>

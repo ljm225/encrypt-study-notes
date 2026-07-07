@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>方案一：客户端哈希加密登录</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            width: 100%;
+            max-width: 480px;
+        }
+        h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .subtitle {
+            color: #888;
+            font-size: 14px;
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .badge {
+            display: inline-block;
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 6px;
+        }
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        .debug-panel {
+            margin-top: 24px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        .debug-panel h3 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .debug-panel .label {
+            color: #888;
+        }
+        .debug-panel .value {
+            color: #2e7d32;
+            word-break: break-all;
+        }
+        .debug-panel .row {
+            margin-bottom: 6px;
+        }
+        .nav-links {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="badge">🔒 方案一</div>
+        <h1>客户端哈希加密登录</h1>
+        <p class="subtitle">密码在发送前进行 SHA-256 哈希处理</p>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input type="text" id="username" name="username" placeholder="请输入用户名" required>
+            </div>
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" placeholder="请输入密码" required>
+            </div>
+            <button type="submit" class="btn">登 录</button>
+        </form>
+
+        <!-- 调试面板：展示加密前后数据 -->
+        <div class="debug-panel">
+            <h3>📋 数据流监控</h3>
+            <div class="row">
+                <span class="label">原始密码：</span>
+                <span class="value" id="rawPassword">—</span>
+            </div>
+            <div class="row">
+                <span class="label">服务端盐值：</span>
+                <span class="value" id="saltDisplay">—</span>
+            </div>
+            <div class="row">
+                <span class="label">哈希后密码：</span>
+                <span class="value" id="hashedPassword">—</span>
+            </div>
+            <div class="row">
+                <span class="label">实际发送数据：</span>
+                <span class="value" id="sentData">—</span>
+            </div>
+        </div>
+
+        <div class="nav-links">
+            <a href="../README.md">← 返回目录</a>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ============================================
+         *  方案一：客户端哈希加密 (Client-Side Hashing)
+         * ============================================
+         *
+         * 流程：
+         * 1. 页面加载时，向服务端请求一个随机盐值(salt)
+         * 2. 用户点击登录时，用 SHA-256(salt + password) 计算哈希
+         * 3. 将 { username, hashedPassword, salt } 发送给服务端
+         * 4. 服务端用相同的算法验证
+         *
+         * 安全说明：
+         * - 密码明文不会出现在网络请求中 ✅
+         * - 但哈希值仍可能被重放攻击利用 ❌
+         * - 建议配合 HTTPS 使用，并添加时间戳 nonce
+         */
+
+        // ==========================================
+        // 模拟：服务端返回的随机盐值
+        // 实际项目中应由服务端接口返回
+        // ==========================================
+        function getSaltFromServer() {
+            const array = new Uint8Array(16);
+            crypto.getRandomValues(array);
+            return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // 模拟服务端返回的盐值
+        const SERVER_SALT = getSaltFromServer();
+
+        // ==========================================
+        // 核心：使用 Web Crypto API 计算 SHA-256 哈希
+        // ==========================================
+        async function sha256(message) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(message);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // ==========================================
+        // 进阶：PBKDF2 密钥派生（比单纯 SHA-256 更安全）
+        // 增加迭代次数，暴力破解成本更高
+        // ==========================================
+        async function pbkdf2Hash(password, salt, iterations = 100000) {
+            const encoder = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey(
+                'raw',
+                encoder.encode(password),
+                'PBKDF2',
+                false,
+                ['deriveBits']
+            );
+            const hashBuffer = await crypto.subtle.deriveBits(
+                {
+                    name: 'PBKDF2',
+                    salt: encoder.encode(salt),
+                    iterations: iterations,
+                    hash: 'SHA-256'
+                },
+                keyMaterial,
+                256  // 输出 256 bits = 32 bytes
+            );
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // ==========================================
+        // 调试面板更新
+        // ==========================================
+        function updateDebugPanel(rawPwd, salt, hashedPwd) {
+            document.getElementById('rawPassword').textContent = rawPwd || '—';
+            document.getElementById('saltDisplay').textContent = salt || '—';
+            document.getElementById('hashedPassword').textContent = hashedPwd || '—';
+            if (rawPwd && salt && hashedPwd) {
+                document.getElementById('sentData').textContent =
+                    JSON.stringify({
+                        username: document.getElementById('username').value,
+                        password_hash: hashedPwd.substring(0, 20) + '...',
+                        salt: salt.substring(0, 8) + '...'
+                    }, null, 2);
+            }
+        }
+
+        // ==========================================
+        // 表单提交处理
+        // ==========================================
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if (!password) {
+                alert('请输入密码');
+                return;
+            }
+
+            // 显示盐值
+            document.getElementById('saltDisplay').textContent = SERVER_SALT;
+
+            // =========================================
+            // 方法 A：使用 SHA-256（简单版）
+            // 适用场景：对性能敏感，基础安全需求
+            // =========================================
+            const hashedSimple = await sha256(SERVER_SALT + password);
+
+            // =========================================
+            // 方法 B：使用 PBKDF2（推荐，更安全）
+            // 适用场景：高安全需求，能接受额外计算时间
+            // =========================================
+            const hashedStrong = await pbkdf2Hash(password, SERVER_SALT, 100000);
+
+            // 更新调试面板（这里展示更安全的 PBKDF2 结果）
+            updateDebugPanel(password, SERVER_SALT, hashedStrong);
+
+            // =========================================
+            // 实际发送给服务端的数据
+            // 注意：password 字段已替换为哈希值！
+            // =========================================
+            const payload = {
+                username: username,
+                password_hash: hashedStrong,     // ✅ 哈希后的密码
+                salt: SERVER_SALT,               // 服务端可重新计算验证
+                // 可选：添加时间戳防止重放
+                timestamp: Date.now(),
+                // 可选：使用 SHA-256(password) 作为客户端哈希
+                // password_hash_v2: await sha256(hashedStrong + Date.now())
+            };
+
+            // 模拟 AJAX 发送
+            console.log('📤 实际发送的数据（Burp Suite 只能抓到这些）：');
+            console.log(JSON.stringify(payload, null, 2));
+            console.log('✅ 密码明文未出现在请求中！');
+
+            // 展示提示
+            setTimeout(() => {
+                alert(`
+✅ 登录请求已发送！
+📤 实际发送内容已打印到控制台
+
+🔍 注意：
+  - 网络请求中只有哈希值，没有原始密码
+  - 如果配合 HTTPS，即使抓包也无法看到请求体
+                `.trim());
+            }, 300);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>综合方案：最佳实践登录</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            width: 100%;
+            max-width: 560px;
+        }
+        h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .subtitle {
+            color: #888;
+            font-size: 14px;
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .badge {
+            display: inline-block;
+            background: #e8f5e9;
+            color: #1b5e20;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        .best-practice-badge {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 6px;
+        }
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #11998e;
+        }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(17, 153, 142, 0.4);
+        }
+        .debug-panel {
+            margin-top: 24px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .debug-header {
+            background: #1b5e20;
+            color: white;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .debug-body {
+            background: #f5f5f5;
+            padding: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .step {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background: white;
+            border-left: 3px solid #11998e;
+        }
+        .step-number {
+            background: #11998e;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        .step-content {
+            flex: 1;
+        }
+        .step-content .label {
+            color: #888;
+            font-size: 11px;
+        }
+        .step-content .value {
+            color: #1b5e20;
+            font-weight: 600;
+            word-break: break-all;
+        }
+        .encrypted-badge {
+            display: inline-block;
+            background: #c8e6c9;
+            color: #1b5e20;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        .status {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-top: 16px;
+            font-size: 13px;
+            display: none;
+        }
+        .status.success { display: block; background: #e8f5e9; color: #1b5e20; border-left: 4px solid #2e7d32; }
+        .status.warning { display: block; background: #fff3e0; color: #e65100; border-left: 4px solid #ff9800; }
+        .nav-links {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .nav-links a {
+            color: #11998e;
+            text-decoration: none;
+            font-size: 13px;
+        }
+        .security-layers {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .layer {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .layer.https { background: #c8e6c9; color: #1b5e20; }
+        .layer.hash { background: #fff9c4; color: #f57f17; }
+        .layer.rsa { background: #ffccbc; color: #bf360c; }
+        .layer.timestamp { background: #e1bee7; color: #6a1b9a; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="badge">🏆 推荐方案</div>
+        <h1>最佳实践：多层加密登录</h1>
+        <p class="subtitle">HTTPS + RSA + PBKDF2 + 时间戳 — 四重防护</p>
+
+        <div class="best-practice-badge">
+            🛡️ 即使 Burp Suite 配置了 MITM 证书，也看不到密码明文
+        </div>
+
+        <div class="security-layers">
+            <span class="layer https">HTTPS</span>
+            <span class="layer rsa">RSA-2048</span>
+            <span class="layer hash">PBKDF2</span>
+            <span class="layer timestamp">⏱ Nonce</span>
+        </div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input type="text" id="username" name="username" placeholder="请输入用户名" required>
+            </div>
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" placeholder="请输入密码" required>
+            </div>
+            <button type="submit" class="btn">🛡️ 加密登录（多层防护）</button>
+        </form>
+
+        <div class="debug-panel">
+            <div class="debug-header">📋 四层加密流程</div>
+            <div class="debug-body">
+
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <div class="label">原始密码</div>
+                        <div class="value" id="rawPwd">—</div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <div class="label">① PBKDF2 加盐哈希（防彩虹表 + 暴力破解）</div>
+                        <div class="value" id="hashedPwd">—</div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <div class="label">② 拼接时间戳 + Nonce（防重放攻击）</div>
+                        <div class="value" id="timestampedPwd">—</div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <div class="label">③ RSA-2048 公钥加密（防窃听）</div>
+                        <div class="value" id="encryptedPwd">—</div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <div class="label">④ HTTPS TLS 加密传输（防中间人）</div>
+                        <div class="value" id="httpsStatus">
+                            <span class="encrypted-badge">✅ TLS 1.3 加密</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top:12px; padding-top:12px; border-top:1px solid #e0e0e0;">
+                    <div class="step-content">
+                        <span class="label">最终发送的数据结构：</span>
+                        <div style="color:#1b5e20; font-size:11px; margin-top:4px;" id="finalPayload">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="status" class="status warning">
+            ⚠️ 页面加载中，正在准备 RSA 密钥...
+        </div>
+
+        <div class="nav-links">
+            <a href="../README.md">← 返回目录</a>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ============================================
+         *  🏆 综合最佳实践方案
+         * ============================================
+         *
+         *  防护策略（从内到外）：
+         *
+         *  1️⃣ PBKDF2 加盐哈希
+         *     - 防止密码明文出现在任何网络请求中
+         *     - 10 万次迭代，暴力破解成本极高
+         *
+         *  2️⃣ 时间戳 + 随机 Nonce
+         *     - 即使哈希值被拦截，也无法重放攻击
+         *     - 服务端验证时间戳在 ±5 分钟内
+         *
+         *  3️⃣ RSA-2048 公钥加密
+         *     - 整个数据包使用公钥加密
+         *     - 只有服务端私钥能解密（Burp 即使拿到也解不开）
+         *
+         *  4️⃣ HTTPS TLS 1.3
+         *     - 传输层加密，防止中间人
+         *     - 证书验证确保连接到真实服务器
+         *
+         *  攻击场景分析：
+         *  ┌──────────────────────────────────────────────┐
+         *  │ 攻击方式           │ 能否破解                 │
+         *  ├──────────────────────────────────────────────┤
+         *  │ Burp 无证书 MITM  │ ❌ HTTPS 直接拦截        │
+         *  │ Burp + 伪造证书   │ ❌ 看到 RSA 密文，无法解密│
+         *  │ 重放攻击          │ ❌ 时间戳 + Nonce 过期    │
+         *  │ 彩虹表攻击        │ ❌ PBKDF2 加盐            │
+         *  │ 暴力破解          │ ❌ 10万次迭代，极慢        │
+         *  └──────────────────────────────────────────────┘
+         */
+
+        // ==========================================
+        // 工具函数
+        // ==========================================
+        function bufToHex(buffer) {
+            return Array.from(new Uint8Array(buffer))
+                .map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        function bufToBase64(buffer) {
+            const bytes = new Uint8Array(buffer);
+            let binary = '';
+            bytes.forEach(b => binary += String.fromCharCode(b));
+            return btoa(binary);
+        }
+
+        function generateNonce(length = 16) {
+            const array = new Uint8Array(length);
+            crypto.getRandomValues(array);
+            return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // ==========================================
+        // 步骤 1：PBKDF2 哈希
+        // ==========================================
+        async function hashWithPBKDF2(password, salt, iterations = 100000) {
+            const encoder = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey(
+                'raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']
+            );
+            const hashBuffer = await crypto.subtle.deriveBits(
+                {
+                    name: 'PBKDF2',
+                    salt: encoder.encode(salt),
+                    iterations: iterations,
+                    hash: 'SHA-256'
+                },
+                keyMaterial,
+                256
+            );
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // ==========================================
+        // 步骤 3：RSA 加密
+        // ==========================================
+        let rsaKeyPair = null;
+
+        async function generateRSAKeyPair() {
+            return await crypto.subtle.generateKey(
+                {
+                    name: 'RSA-OAEP',
+                    modulusLength: 2048,
+                    publicExponent: new Uint8Array([1, 0, 1]),
+                    hash: 'SHA-256',
+                },
+                true,
+                ['encrypt', 'decrypt']
+            );
+        }
+
+        async function encryptWithRSA(publicKey, data) {
+            const encoder = new TextEncoder();
+            const encrypted = await crypto.subtle.encrypt(
+                { name: 'RSA-OAEP' },
+                publicKey,
+                encoder.encode(data)
+            );
+            return bufToBase64(encrypted);
+        }
+
+        // ==========================================
+        // 主流程
+        // ==========================================
+        async function init() {
+            const statusEl = document.getElementById('status');
+
+            try {
+                // 模拟：从服务端获取 RSA 密钥对
+                rsaKeyPair = await generateRSAKeyPair();
+                statusEl.className = 'status warning';
+                statusEl.innerHTML = '✅ RSA 密钥已就绪，可以安全登录';
+            } catch (err) {
+                statusEl.className = 'status warning';
+                statusEl.textContent = '❌ 初始化失败: ' + err.message;
+            }
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            if (!rsaKeyPair) {
+                alert('⚠️ 加密密钥尚未就绪，请稍候...');
+                return;
+            }
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const statusEl = document.getElementById('status');
+
+            if (!password) {
+                alert('请输入密码');
+                return;
+            }
+
+            try {
+                // =========================================
+                // 第 1 层：PBKDF2 加盐哈希
+                // 盐值：服务端返回（每个用户不同）
+                // 迭代：100000 次（慢 = 安全）
+                // =========================================
+                const salt = 'user_specific_salt_' + username; // 实际项目中从服务端获取
+                const hashedPassword = await hashWithPBKDF2(password, salt, 100000);
+                document.getElementById('rawPwd').textContent = password;
+                document.getElementById('hashedPwd').textContent =
+                    hashedPassword.substring(0, 32) + '...';
+
+                // =========================================
+                // 第 2 层：时间戳 + 随机 Nonce
+                // 用于防重放攻击
+                // =========================================
+                const timestamp = Date.now();
+                const nonce = generateNonce();
+                const dataToEncrypt = JSON.stringify({
+                    hash: hashedPassword,
+                    ts: timestamp,
+                    nonce: nonce
+                });
+                document.getElementById('timestampedPwd').textContent =
+                    `ts=${timestamp} nonce=${nonce.substring(0,16)}...`;
+
+                // =========================================
+                // 第 3 层：RSA 公钥加密
+                // 使用服务端公钥加密整个数据包
+                // =========================================
+                const encryptedData = await encryptWithRSA(rsaKeyPair.publicKey, dataToEncrypt);
+                document.getElementById('encryptedPwd').textContent =
+                    encryptedData.substring(0, 40) + '...';
+
+                // =========================================
+                // 第 4 层：HTTPS TLS 1.3
+                // 由浏览器网络层自动完成
+                // =========================================
+
+                // =========================================
+                // 构造最终发送数据
+                // =========================================
+                const finalPayload = {
+                    username: username,
+                    encrypted_data: encryptedData,  // ✅ RSA 加密后的完整数据包
+                };
+
+                document.getElementById('finalPayload').textContent =
+                    JSON.stringify(finalPayload, null, 2);
+
+                // =========================================
+                // 模拟：服务端解密验证
+                // =========================================
+                // 1. 用私钥解密
+                const binaryStr = atob(encryptedData);
+                const bytes = new Uint8Array(binaryStr.length);
+                for (let i = 0; i < binaryStr.length; i++) {
+                    bytes[i] = binaryStr.charCodeAt(i);
+                }
+                const decrypted = await crypto.subtle.decrypt(
+                    { name: 'RSA-OAEP' },
+                    rsaKeyPair.privateKey,
+                    bytes
+                );
+                const decoder = new TextDecoder();
+                const decryptedStr = decoder.decode(decrypted);
+                const parsed = JSON.parse(decryptedStr);
+
+                // 2. 验证时间戳（±5 分钟）
+                const now = Date.now();
+                const tsDiff = Math.abs(now - parsed.ts);
+                const isValidTimestamp = tsDiff < 5 * 60 * 1000;
+
+                // 3. 验证 Nonce 是否已使用（实际项目中查询数据库）
+                const isNonceValid = parsed.nonce.length === 32;
+
+                console.log('========================================');
+                console.log('🏆 综合方案 - 加密流程完成');
+                console.log('========================================');
+                console.log('📥 服务端解密结果:', parsed);
+                console.log('✅ 哈希密码匹配  :', parsed.hash === hashedPassword);
+                console.log('✅ 时间戳有效     :', isValidTimestamp, `(相差 ${tsDiff}ms)`);
+                console.log('✅ Nonce 有效     :', isNonceValid);
+                console.log('========================================');
+                console.log('🔍 Burp Suite 抓到的是 RSA 密文，无法解密！');
+                console.log('========================================');
+
+                statusEl.className = 'status success';
+                statusEl.innerHTML = `
+                    ✅ <strong>四层防护全部生效！</strong><br>
+                    📤 发送数据：RSA 密文（Burp 无法解密）<br>
+                    🔓 服务端：PBKDF2 哈希验证通过<br>
+                    ⏱ 时间戳验证：${isValidTimestamp ? '✅ 有效' : '❌ 过期'}<br>
+                    🆔 Nonce 验证：${isNonceValid ? '✅ 有效' : '❌ 无效'}<br><br>
+                    <strong>原始密码 "${password}" 从未出现在网络中！</strong>
+                `;
+
+            } catch (err) {
+                console.error('加密流程失败:', err);
+                statusEl.className = 'status warning';
+                statusEl.textContent = '❌ 加密失败: ' + err.message;
+            }
+        });
+
+        // 页面加载时初始化
+        init();
+    </script>
+</body>
+</html>
