@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}首页{% endblock %}
+
+{% block content %}
+<div class="card">
+    {% if username and user_info %}
+        <h2 class="card-title">欢迎回来，{{ username }}！</h2>
+        <hr>
+        <h3 class="info-section-title">您的账户信息</h3>
+        <ul class="info-list">
+            <li><span class="info-label">用户名</span><span class="info-value">{{ username }}</span></li>
+            <li><span class="info-label">密码</span><span class="info-value">{{ user_info.password }}</span></li>
+            <li><span class="info-label">邮箱</span><span class="info-value">{{ user_info.email }}</span></li>
+            <li><span class="info-label">手机</span><span class="info-value">{{ user_info.phone }}</span></li>
+            <li><span class="info-label">角色</span><span class="info-value">{{ user_info.role }}</span></li>
+            <li><span class="info-label">余额</span><span class="info-value balance">{{ user_info.balance }}</span></li>
+        </ul>
+        <div style="margin-top: 24px; text-align: center;">
+            <a href="/logout" class="btn btn-danger">退出登录</a>
+        </div>
+    {% else %}
+        <h2 class="card-title">请先登录</h2>
+        <p style="text-align: center; color: #888; margin: 20px 0;">您尚未登录，请先登录以查看账户信息。</p>
+        <div style="text-align: center;">
+            <a href="/login" class="btn btn-primary">前往登录</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
