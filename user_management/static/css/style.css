@@ -227,3 +227,69 @@ hr {
     color: #e67e22;
     font-size: 18px;
 }
+
+/* ============================================
+   搜索框样式
+   ============================================ */
+.search-form {
+    margin-top: 8px;
+}
+
+.search-box {
+    display: flex;
+    gap: 8px;
+}
+
+.search-input {
+    flex: 1;
+    padding: 10px 14px;
+    font-size: 14px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+.search-input:focus {
+    border-color: #667eea;
+}
+
+.btn-search {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+/* ============================================
+   搜索结果表格
+   ============================================ */
+.search-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.search-table thead {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+}
+
+.search-table th,
+.search-table td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.search-table tbody tr:hover {
+    background: #f5f7ff;
+}
+
+.no-result {
+    text-align: center;
+    color: #999;
+    font-size: 14px;
+    padding: 20px 0;
+}
