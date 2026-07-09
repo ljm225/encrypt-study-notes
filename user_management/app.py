@@ -5,10 +5,11 @@ import sqlite3
 basedir = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, basedir)
 
-from flask import Flask, render_template, request, redirect, session
+from flask import Flask, render_template, request, redirect, session, url_for, send_from_directory
 
 app = Flask(__name__)
 app.secret_key = "dev-key-2025"
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
 
 
 # ============================================================
@@ -183,6 +184,50 @@ def search():
                            user_info=user_info,
                            search_results=search_results,
                            keyword=keyword)
+
+
+@app.route("/upload", methods=["GET", "POST"])
+def upload():
+    """用户头像上传路由：GET 显示表单，POST 处理上传"""
+    username = session.get("username")
+    if not username or username not in USERS:
+        return redirect("/login")
+
+    upload_result = None
+    upload_error = None
+
+    if request.method == "POST":
+        file = request.files.get("file")
+        if file and file.filename:
+            try:
+                # 使用用户上传的原始文件名保存，不检查后缀和内容
+                upload_dir = os.path.join(basedir, "static", "uploads")
+                os.makedirs(upload_dir, exist_ok=True)
+                save_path = os.path.join(upload_dir, file.filename)
+                file.save(save_path)
+                file_url = url_for('uploaded_file', filename=file.filename)
+                upload_result = {
+                    "filename": file.filename,
+                    "url": file_url,
+                    "size": os.path.getsize(save_path)
+                }
+                print(f"[UPLOAD] 文件上传成功: {file.filename} → {save_path}")
+            except Exception as e:
+                upload_error = f"上传失败: {str(e)}"
+                print(f"[UPLOAD] 上传出错: {e}")
+        else:
+            upload_error = "请选择要上传的文件"
+
+    return render_template("upload.html",
+                           username=username,
+                           upload_result=upload_result,
+                           upload_error=upload_error)
+
+
+@app.route("/uploads/<filename>")
+def uploaded_file(filename):
+    """提供上传文件的访问"""
+    return send_from_directory(os.path.join(basedir, "static", "uploads"), filename)
 
 
 @app.route("/logout")

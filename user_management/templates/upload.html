@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}上传头像{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2 class="card-title">📷 上传头像</h2>
+    <p style="text-align: center; color: #888; font-size: 14px; margin-bottom: 24px;">
+        支持任何文件类型，使用原始文件名保存
+    </p>
+
+    {% if upload_error %}
+        <div class="alert alert-error">{{ upload_error }}</div>
+    {% endif %}
+
+    <form method="POST" action="/upload" enctype="multipart/form-data" class="login-form">
+        <div class="form-group">
+            <label for="file">选择文件</label>
+            <input type="file" id="file" name="file" required>
+        </div>
+        <button type="submit" class="btn btn-primary">上 传</button>
+    </form>
+
+    {% if upload_result %}
+        <hr>
+        <div style="text-align: center;">
+            <h3 class="info-section-title">✅ 上传成功</h3>
+            <p style="font-size: 13px; color: #888; margin-bottom: 12px;">
+                文件名: {{ upload_result.filename }}<br>
+                大小: {{ upload_result.size }} bytes
+            </p>
+            <div style="border: 2px dashed #e0e0e0; border-radius: 8px; padding: 16px; display: inline-block;">
+                <img src="{{ upload_result.url }}" alt="上传的图片"
+                     style="max-width: 300px; max-height: 300px; border-radius: 8px;">
+            </div>
+            <p style="margin-top: 12px;">
+                <a href="{{ upload_result.url }}" target="_blank" style="color: #667eea;">
+                    🔗 {{ upload_result.url }}
+                </a>
+            </p>
+        </div>
+    {% endif %}
+
+    <div style="text-align: center; margin-top: 20px;">
+        <a href="/" class="btn btn-danger" style="display: inline-block; padding: 8px 20px;">返回首页</a>
+    </div>
+</div>
+{% endblock %}
